@@ -4,7 +4,7 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { X, RotateCcw, Share2, Sparkles, Play, Coffee, Trash2 } from 'lucide-react'
+import { X, RotateCcw, Share2, Sparkles, Play } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 
 // Couleurs vibrantes pour la roue
@@ -23,35 +23,25 @@ const WHEEL_COLORS = [
   '#00CED1', // Turquoise foncé
 ]
 
-// Générer les confettis une seule fois
-const CONFETTI_PIECES = Array.from({ length: 80 }).map((_, i) => ({
-  id: i,
-  left: Math.random() * 100,
-  color: WHEEL_COLORS[Math.floor(Math.random() * WHEEL_COLORS.length)],
-  size: 6 + Math.random() * 8,
-  delay: Math.random() * 0.5,
-  duration: 2 + Math.random() * 2,
-  isCircle: Math.random() > 0.5,
-}))
-
 // Composant Confetti (défini en dehors du composant principal)
 function Confetti({ show }: { show: boolean }) {
   if (!show) return null
   
   return (
     <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
-      {CONFETTI_PIECES.map((piece) => (
+      {Array.from({ length: 100 }).map((_, i) => (
         <div
-          key={piece.id}
-          className="absolute"
+          key={i}
+          className="absolute animate-confetti"
           style={{
-            left: `${piece.left}%`,
+            left: `${Math.random() * 100}%`,
             top: '-20px',
-            width: `${piece.size}px`,
-            height: `${piece.size}px`,
-            backgroundColor: piece.color,
-            borderRadius: piece.isCircle ? '50%' : '2px',
-            animation: `confetti ${piece.duration}s linear ${piece.delay}s forwards`,
+            width: '10px',
+            height: '10px',
+            backgroundColor: WHEEL_COLORS[Math.floor(Math.random() * WHEEL_COLORS.length)],
+            borderRadius: Math.random() > 0.5 ? '50%' : '0',
+            animationDelay: `${Math.random() * 2}s`,
+            animationDuration: `${2 + Math.random() * 2}s`,
           }}
         />
       ))}
@@ -102,24 +92,6 @@ export default function DecisionWheel({ initialOptions = [] }: DecisionWheelProp
     'decisionWheelOptions',
     initialOptions.length > 0 ? initialOptions : ['Pizza', 'Sushi', 'Burger', 'Tacos']
   )
-
-  // Lire les options depuis l'URL au montage et les appliquer
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const optionsParam = params.get('options')
-    if (optionsParam) {
-      const urlOptions = optionsParam.split(',').map(o => {
-        try {
-          return decodeURIComponent(o.trim())
-        } catch {
-          return o.trim()
-        }
-      }).filter(o => o)
-      if (urlOptions.length > 0) {
-        setOptions(urlOptions)
-      }
-    }
-  }, [setOptions])
   
   const [inputValue, setInputValue] = useState('')
   const [isSpinning, setIsSpinning] = useState(false)
@@ -293,14 +265,11 @@ export default function DecisionWheel({ initialOptions = [] }: DecisionWheelProp
         setIsSpinning(false)
         
         // Calculer le résultat
-        // Le pointeur est en haut de la roue (à -PI/2 ou 3PI/2)
-        // On calcule l'angle relatif du pointeur par rapport à la rotation de la roue
+        const normalizedRotation = currentRotation % (2 * Math.PI)
         const sliceAngle = (2 * Math.PI) / options.length
-        const pointerAngle = -Math.PI / 2 // Pointeur en haut
-        const relativeAngle = pointerAngle - currentRotation
-        // Normaliser entre 0 et 2*PI
-        const normalizedAngle = ((relativeAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)
-        const winningIndex = Math.floor(normalizedAngle / sliceAngle) % options.length
+        // Le pointeur est en haut (à -PI/2)
+        const pointerAngle = (2 * Math.PI - normalizedRotation + Math.PI / 2) % (2 * Math.PI)
+        const winningIndex = Math.floor(pointerAngle / sliceAngle) % options.length
         
         setResult(options[winningIndex])
         setShowConfetti(true)
@@ -348,17 +317,6 @@ export default function DecisionWheel({ initialOptions = [] }: DecisionWheelProp
     setOptions(prev => prev.filter((_, i) => i !== index))
   }, [setOptions])
 
-  // Supprimer le résultat des options pour les prochains lancers
-  const removeResultFromOptions = useCallback(() => {
-    if (!result) return
-    setOptions(prev => prev.filter(opt => opt !== result))
-    toast({
-      title: 'Option supprimée',
-      description: `"${result}" a été retiré de la roue.`
-    })
-    setResult(null)
-  }, [result, setOptions])
-
   // Réinitialiser
   const resetOptions = useCallback(() => {
     setOptions([])
@@ -374,51 +332,22 @@ export default function DecisionWheel({ initialOptions = [] }: DecisionWheelProp
   const shareWheel = useCallback(async () => {
     const url = `${window.location.origin}${window.location.pathname}?options=${encodeURIComponent(options.join(','))}`
     
-    try {
-      if (navigator.share) {
+    if (navigator.share) {
+      try {
         await navigator.share({
           title: 'Decision Wheel',
           text: 'Regardez ma roue de décision!',
           url: url
         })
-      } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(url)
-        toast({
-          title: 'Lien copié!',
-          description: 'Le lien a été copié dans le presse-papier.'
-        })
-      } else {
-        // Fallback pour les navigateurs plus anciens
-        const textArea = document.createElement('textarea')
-        textArea.value = url
-        textArea.style.position = 'fixed'
-        textArea.style.left = '-9999px'
-        document.body.appendChild(textArea)
-        textArea.focus()
-        textArea.select()
-        try {
-          document.execCommand('copy')
-          toast({
-            title: 'Lien copié!',
-            description: 'Le lien a été copié dans le presse-papier.'
-          })
-        } catch {
-          toast({
-            title: 'Lien à copier',
-            description: url,
-          })
-        }
-        document.body.removeChild(textArea)
+      } catch {
+        // User cancelled or error
       }
-    } catch (error) {
-      // L'utilisateur a annulé ou erreur - ne pas afficher de toast pour l'annulation
-      if (error instanceof Error && error.name !== 'AbortError') {
-        toast({
-          title: 'Erreur',
-          description: 'Impossible de partager le lien.',
-          variant: 'destructive'
-        })
-      }
+    } else {
+      await navigator.clipboard.writeText(url)
+      toast({
+        title: 'Lien copié!',
+        description: 'Le lien a été copié dans le presse-papier.'
+      })
     }
   }, [options])
 
@@ -456,8 +385,7 @@ export default function DecisionWheel({ initialOptions = [] }: DecisionWheelProp
               ref={canvasRef}
               width={350}
               height={350}
-              className="max-w-full h-auto drop-shadow-2xl cursor-pointer"
-              onClick={spinWheel}
+              className="max-w-full h-auto drop-shadow-2xl"
             />
           </div>
 
@@ -476,19 +404,8 @@ export default function DecisionWheel({ initialOptions = [] }: DecisionWheelProp
           {result && (
             <div className="mt-8 text-center animate-bounce-in">
               <p className="text-slate-600 dark:text-slate-400 text-lg">Le résultat est:</p>
-              <div className="mt-2 flex flex-col items-center gap-3">
-                <div className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-2xl sm:text-3xl font-bold rounded-2xl shadow-2xl animate-pulse-soft">
-                  {result}
-                </div>
-                <Button
-                  onClick={removeResultFromOptions}
-                  variant="outline"
-                  size="sm"
-                  className="text-red-500 border-red-300 hover:bg-red-50 dark:hover:bg-red-950"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Retirer des prochains lancers
-                </Button>
+              <div className="mt-2 px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-2xl sm:text-3xl font-bold rounded-2xl shadow-2xl animate-pulse-soft">
+                {result}
               </div>
             </div>
           )}
@@ -563,17 +480,6 @@ export default function DecisionWheel({ initialOptions = [] }: DecisionWheelProp
       <footer className="p-4 text-center text-slate-500 text-sm">
         Fait avec amour pour vous aider à décider
       </footer>
-
-      {/* Buy Me a Coffee Button */}
-      <a
-        href="https://buymeacoffee.com/minhero"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-4 left-4 z-40 flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-      >
-        <Coffee className="w-4 h-4" />
-        <span className="hidden sm:inline">Buy me a coffee</span>
-      </a>
     </div>
   )
 }
