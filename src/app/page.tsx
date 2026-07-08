@@ -9,7 +9,7 @@ import { useSpinPhysics } from '@/hooks/use-spin-physics';
 import { useWheelSound } from '@/hooks/use-wheel-sound';
 import WheelCanvas from '@/components/wheel-canvas';
 import ChoicesList from '@/components/choices-list';
-import ResultModal from '@/components/result-modal';
+import ResultPanel from '@/components/result-panel';
 import ShareDialog from '@/components/share-dialog';
 
 const DEFAULT_CHOICES: Choice[] = [
@@ -22,6 +22,11 @@ const DEFAULT_CHOICES: Choice[] = [
 ];
 
 const STORAGE_KEY = 'decision-wheel:state';
+
+const BONE = '#E4E0D6';
+const MUTED = '#5A5E66';
+const ORANGE = '#FF5C1F';
+const INK = '#0A0B0E';
 
 type PersistedState = { title: string; choices: Choice[] };
 
@@ -80,10 +85,10 @@ export default function Home() {
   const [choices, setChoices] = useState<Choice[]>(initialState.choices);
   const [winner, setWinner] = useState<Choice | null>(null);
   const [winnerIndex, setWinnerIndex] = useState<number | null>(null);
-  const [resultOpen, setResultOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [muted, setMuted] = useState(false);
   const [urlCleaned, setUrlCleaned] = useState(false);
+  const [removedCount, setRemovedCount] = useState(0);
 
   const { toast } = useToast();
   const sound = useWheelSound();
@@ -97,11 +102,7 @@ export default function Home() {
     if (!w) return;
     setWinner(w);
     setWinnerIndex(result.winningIndex);
-    // Brief pause so the wheel stops visually before the takeover
-    setTimeout(() => {
-      setResultOpen(true);
-      if (!muted) sound.win();
-    }, 450);
+    if (!muted) sound.win();
   }, [choices, muted, sound]);
 
   const { rotation, isSpinning, spin } = useSpinPhysics({
@@ -130,6 +131,24 @@ export default function Home() {
     setUrlCleaned(true);
   }, [urlCleaned]);
 
+  // Global keyboard: Enter/Space = spin (when not typing in an input)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        if (choices.length >= 2 && !isSpinning) {
+          e.preventDefault();
+          handleSpin();
+        }
+      }
+      if (e.key === 'r' && winner) {
+        handleRemoveWinner();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
   const handleSpin = useCallback(() => {
     if (choices.length < 2) {
       toast({
@@ -139,7 +158,6 @@ export default function Home() {
       });
       return;
     }
-    // Reset winner highlight
     setWinner(null);
     setWinnerIndex(null);
     if (!muted) {
@@ -158,187 +176,213 @@ export default function Home() {
       }
       return shuffled;
     });
+    setWinner(null);
+    setWinnerIndex(null);
   }, []);
 
   const handleClear = useCallback(() => {
     setChoices([]);
+    setWinner(null);
+    setWinnerIndex(null);
+    setRemovedCount(0);
   }, []);
 
   const handleSpinAgain = useCallback(() => {
-    setResultOpen(false);
-    setTimeout(() => handleSpin(), 300);
+    setWinner(null);
+    setWinnerIndex(null);
+    setTimeout(() => handleSpin(), 100);
   }, [handleSpin]);
 
+  const handleRemoveWinner = useCallback(() => {
+    if (!winner) return;
+    setChoices((prev) => prev.filter((c) => c.id !== winner.id));
+    setRemovedCount((c) => c + 1);
+    setWinner(null);
+    setWinnerIndex(null);
+    toast({
+      title: `Removed "${winner.label}"`,
+      description: 'Wheel updated. Spin again for the next round.',
+    });
+    // Auto-spin after a brief delay if there are still 2+ options
+    setTimeout(() => {
+      setChoices((prev) => {
+        if (prev.length >= 2) {
+          setTimeout(() => spin(), 200);
+        }
+        return prev;
+      });
+    }, 300);
+  }, [winner, toast, spin]);
+
+  const handleDismissResult = useCallback(() => {
+    setWinner(null);
+    setWinnerIndex(null);
+  }, []);
+
+  const canSpin = choices.length >= 2 && !isSpinning;
+
   return (
-    <div className="relative min-h-[100dvh] bg-[#F2EEE5] text-[#0A0A0A]">
-      {/* Top bar — thin, mono, like a newspaper masthead */}
-      <header className="flex items-center justify-between border-b border-[#0A0A0A]/15 px-6 py-4 sm:px-10">
-        <div className="flex items-baseline gap-3">
-          <span className="font-sans text-sm font-extrabold tracking-tight">
-            Decision Wheel
-          </span>
-          <span className="hidden font-mono text-xs text-[#0A0A0A]/40 sm:inline">
-            № 01 — Spin to decide
+    <div className="relative flex min-h-[100dvh] flex-col" style={{ backgroundColor: INK, color: BONE }}>
+      {/* Subtle grid background — HUD feel */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.025]"
+        style={{
+          backgroundImage: `linear-gradient(${BONE} 1px, transparent 1px), linear-gradient(90deg, ${BONE} 1px, transparent 1px)`,
+          backgroundSize: '32px 32px',
+        }}
+      />
+
+      {/* Top bar — thin, terminal-style */}
+      <header className="relative flex items-center justify-between border-b px-4 py-3 sm:px-6" style={{ borderColor: 'rgba(228, 224, 214, 0.1)' }}>
+        <div className="flex items-center gap-3">
+          <span className="font-sans text-sm font-extrabold tracking-tight">DECISION.WHEEL</span>
+          <span className="hidden font-mono text-[10px] uppercase tracking-[0.2em] sm:inline" style={{ color: MUTED }}>
+            v2.0
           </span>
         </div>
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-4">
+          {/* Status indicator */}
+          <div className="hidden items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] sm:flex" style={{ color: MUTED }}>
+            <span
+              className="inline-block h-1.5 w-1.5 rounded-full"
+              style={{
+                backgroundColor: isSpinning ? ORANGE : canSpin ? ORANGE : MUTED,
+                animation: isSpinning ? 'pulse 1s ease-in-out infinite' : undefined,
+              }}
+            />
+            <span style={{ color: isSpinning ? ORANGE : canSpin ? BONE : MUTED }}>
+              {isSpinning ? 'SPINNING' : canSpin ? 'READY' : 'EMPTY'}
+            </span>
+          </div>
           <button
             onClick={() => setMuted((m) => !m)}
-            className="font-mono text-xs uppercase tracking-[0.15em] text-[#0A0A0A]/60 hover:text-[#E63329]"
+            className="transition-colors hover:text-[#FF5C1F]"
+            style={{ color: MUTED }}
             aria-label={muted ? 'Unmute' : 'Mute'}
           >
             {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
           </button>
           <button
             onClick={() => setShareOpen(true)}
-            className="font-mono text-xs uppercase tracking-[0.15em] text-[#0A0A0A]/60 hover:text-[#E63329]"
+            className="font-mono text-[10px] uppercase tracking-[0.2em] transition-colors hover:text-[#FF5C1F]"
+            style={{ color: MUTED }}
           >
             Share
           </button>
         </div>
       </header>
 
-      {/* Main — asymmetric 12-col grid.
-          Left: massive editorial headline + title input + spin CTA.
-          Right: the wheel, large, centered in its column.
-          Below (full width on mobile): choices list.
-      */}
-      <main className="mx-auto grid max-w-[1400px] grid-cols-1 gap-10 px-6 py-12 sm:px-10 lg:grid-cols-12 lg:gap-8 lg:py-16">
-        {/* LEFT — headline column */}
-        <section className="lg:col-span-5 lg:pt-8">
-          {/* Editable title — looks like a section header, behaves like an input */}
-          <div className="mb-8">
-            <span className="font-mono text-xs uppercase tracking-[0.2em] text-[#0A0A0A]/40">
-              Title
-            </span>
+      {/* Main — single screen, no scroll on desktop.
+          Mobile: stacks vertically, may scroll slightly. */}
+      <main className="relative flex flex-1 flex-col gap-4 p-4 sm:p-6 lg:grid lg:grid-cols-[1fr_380px] lg:gap-6">
+        {/* LEFT — wheel + result panel + title */}
+        <section className="flex flex-col items-center gap-4 lg:gap-6">
+          {/* Title — compact, top of wheel column */}
+          <div className="w-full max-w-2xl">
+            <div className="mb-1 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em]" style={{ color: MUTED }}>
+              <span style={{ color: ORANGE }}>+</span>
+              TITLE
+            </div>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Untitled"
-              className="mt-1 border-none border-b border-[#0A0A0A] bg-transparent p-0 pb-2 font-sans text-3xl font-extrabold tracking-tighter shadow-none placeholder:text-[#0A0A0A]/25 focus-visible:border-b focus-visible:border-[#E63329] focus-visible:ring-0 sm:text-4xl"
+              className="border-none border-b bg-transparent p-0 pb-1 font-sans text-lg font-bold tracking-tight shadow-none focus-visible:border-b focus-visible:ring-0 sm:text-xl"
+              style={{ borderColor: 'rgba(228, 224, 214, 0.2)', color: BONE }}
             />
           </div>
 
-          {/* Massive headline — the editorial statement */}
-          <h1 className="font-sans text-6xl font-extrabold leading-[0.92] tracking-tighter sm:text-7xl lg:text-8xl">
-            Can't
-            <br />
-            decide?
-            <br />
-            <span className="text-[#E63329]">Spin.</span>
-          </h1>
+          {/* The wheel — clickable */}
+          <div className="flex flex-1 items-center justify-center">
+            <WheelCanvas
+              choices={choices}
+              rotation={rotation}
+              isSpinning={isSpinning}
+              canSpin={canSpin}
+              winningIndex={winnerIndex}
+              onTick={handleTick}
+              onSpin={handleSpin}
+              size={Math.min(440, typeof window !== 'undefined' ? Math.min(window.innerWidth - 64, window.innerHeight - 320) : 440)}
+            />
+          </div>
 
-          <p className="mt-8 max-w-md font-mono text-sm leading-relaxed text-[#0A0A0A]/60">
-            A wheel for indecisive moments. Add your options, give it a spin,
-            accept the result. Or spin again — we won't judge.
-          </p>
-
-          {/* Spin CTA — massive black bar */}
-          <div className="mt-10">
-            <button
-              onClick={handleSpin}
-              disabled={isSpinning || choices.length < 2}
-              className="group relative flex w-full items-center justify-between overflow-hidden bg-[#0A0A0A] px-8 py-6 text-[#F2EEE5] transition-colors hover:bg-[#E63329] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-[#0A0A0A]"
-            >
-              <span className="font-sans text-2xl font-extrabold tracking-tight sm:text-3xl">
-                {isSpinning ? 'Spinning…' : 'Spin'}
-              </span>
-              <span className="font-mono text-xs uppercase tracking-[0.2em] opacity-60">
-                {choices.length < 2
-                  ? 'Add 2+'
-                  : isSpinning
-                  ? 'Wait'
-                  : '↵'}
-              </span>
-            </button>
-            <div className="mt-2 flex items-center justify-between font-mono text-xs text-[#0A0A0A]/40">
-              <span>{choices.length} options loaded</span>
-              <div className="flex gap-4">
-                <button
-                  onClick={handleShuffle}
-                  disabled={choices.length < 2}
-                  className="flex items-center gap-1 hover:text-[#E63329] disabled:opacity-30"
-                >
-                  <Shuffle className="h-3 w-3" />
-                  Shuffle
-                </button>
-                <button
-                  onClick={handleClear}
-                  disabled={choices.length === 0}
-                  className="flex items-center gap-1 hover:text-[#E63329] disabled:opacity-30"
-                >
-                  <Trash2 className="h-3 w-3" />
-                  Clear
-                </button>
-              </div>
-            </div>
+          {/* Result panel — inline, no modal */}
+          <div className="w-full max-w-2xl">
+            <ResultPanel
+              winner={winner}
+              winnerIndex={winnerIndex}
+              isSpinning={isSpinning}
+              onRemove={handleRemoveWinner}
+              onSpinAgain={handleSpinAgain}
+              onShare={() => setShareOpen(true)}
+              onDismiss={handleDismissResult}
+            />
           </div>
         </section>
 
-        {/* RIGHT — the wheel */}
-        <section className="flex items-center justify-center lg:col-span-7">
-          <WheelCanvas
-            choices={choices}
-            rotation={rotation}
-            isSpinning={isSpinning}
-            winningIndex={winnerIndex}
-            onTick={handleTick}
-            size={560}
-          />
-        </section>
+        {/* RIGHT — options list */}
+        <aside
+          className="flex flex-col border p-4"
+          style={{
+            borderColor: 'rgba(228, 224, 214, 0.1)',
+            backgroundColor: 'rgba(15, 17, 21, 0.6)',
+            maxHeight: 'calc(100dvh - 80px)',
+          }}
+        >
+          <ChoicesList choices={choices} onChange={setChoices} removedCount={removedCount} />
+
+          {/* Footer actions — shuffle / clear */}
+          <div className="mt-3 flex gap-2 border-t pt-3" style={{ borderColor: 'rgba(228, 224, 214, 0.1)' }}>
+            <button
+              onClick={handleShuffle}
+              disabled={choices.length < 2}
+              className="flex flex-1 items-center justify-center gap-2 border py-2 font-mono text-[10px] uppercase tracking-[0.2em] transition-colors disabled:opacity-30"
+              style={{
+                borderColor: 'rgba(228, 224, 214, 0.2)',
+                color: MUTED,
+              }}
+              onMouseEnter={(e) => { if (choices.length >= 2) { e.currentTarget.style.borderColor = ORANGE; e.currentTarget.style.color = ORANGE; } }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(228, 224, 214, 0.2)'; e.currentTarget.style.color = MUTED; }}
+            >
+              <Shuffle className="h-3 w-3" />
+              Shuffle
+            </button>
+            <button
+              onClick={handleClear}
+              disabled={choices.length === 0}
+              className="flex flex-1 items-center justify-center gap-2 border py-2 font-mono text-[10px] uppercase tracking-[0.2em] transition-colors disabled:opacity-30"
+              style={{
+                borderColor: 'rgba(228, 224, 214, 0.2)',
+                color: MUTED,
+              }}
+              onMouseEnter={(e) => { if (choices.length > 0) { e.currentTarget.style.borderColor = ORANGE; e.currentTarget.style.color = ORANGE; } }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(228, 224, 214, 0.2)'; e.currentTarget.style.color = MUTED; }}
+            >
+              <Trash2 className="h-3 w-3" />
+              Clear
+            </button>
+          </div>
+        </aside>
       </main>
 
-      {/* Choices list — full width below, with a strong top border */}
-      <section className="border-t border-[#0A0A0A] bg-[#EDE8DD]">
-        <div className="mx-auto max-w-[1400px] px-6 py-12 sm:px-10">
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-            <div className="lg:col-span-4">
-              <span className="font-mono text-xs uppercase tracking-[0.2em] text-[#0A0A0A]/40">
-                Section 02
-              </span>
-              <h2 className="mt-2 font-sans text-4xl font-extrabold tracking-tighter sm:text-5xl">
-                Your options
-              </h2>
-              <p className="mt-4 max-w-sm font-mono text-sm text-[#0A0A0A]/60">
-                Drag the numbers to reorder. Click any label to rename. The
-                wheel treats every choice as equal weight — that's the point.
-              </p>
-            </div>
-            <div className="lg:col-span-7 lg:col-start-6">
-              <ChoicesList choices={choices} onChange={setChoices} />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer — thin line, mono */}
-      <footer className="border-t border-[#0A0A0A]/15 px-6 py-6 sm:px-10">
-        <div className="mx-auto flex max-w-[1400px] flex-col items-start justify-between gap-2 font-mono text-xs text-[#0A0A0A]/40 sm:flex-row sm:items-center">
-          <span>Decision Wheel · A tool for indecisive moments</span>
+      {/* Footer — minimal */}
+      <footer className="relative border-t px-4 py-2 sm:px-6" style={{ borderColor: 'rgba(228, 224, 214, 0.1)' }}>
+        <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: MUTED }}>
           <span>
-            <a
-              href="https://github.com/Minher0/Decision-Wheel"
-              target="_blank"
-              rel="noreferrer"
-              className="hover:text-[#E63329]"
-            >
-              Source ↗
-            </a>
+            <kbd className="border px-1 py-0.5 text-[9px]" style={{ borderColor: 'rgba(228, 224, 214, 0.2)' }}>↵</kbd> spin ·{' '}
+            <kbd className="border px-1 py-0.5 text-[9px]" style={{ borderColor: 'rgba(228, 224, 214, 0.2)' }}>R</kbd> remove winner ·{' '}
+            click wheel to spin
           </span>
+          <a
+            href="https://github.com/Minher0/Decision-Wheel"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-[#FF5C1F]"
+          >
+            src ↗
+          </a>
         </div>
       </footer>
-
-      <ResultModal
-        open={resultOpen}
-        winner={winner}
-        winnerIndex={winnerIndex}
-        onClose={() => setResultOpen(false)}
-        onSpinAgain={handleSpinAgain}
-        onShare={() => {
-          setResultOpen(false);
-          setShareOpen(true);
-        }}
-      />
 
       <ShareDialog
         open={shareOpen}
@@ -346,6 +390,13 @@ export default function Home() {
         title={title}
         choices={choices}
       />
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+      `}</style>
     </div>
   );
 }

@@ -18,7 +18,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Plus, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { generateId, type Choice } from '@/lib/wheel-types';
@@ -26,7 +26,13 @@ import { generateId, type Choice } from '@/lib/wheel-types';
 type Props = {
   choices: Choice[];
   onChange: (choices: Choice[]) => void;
+  removedCount: number;
 };
+
+const BONE = '#E4E0D6';
+const MUTED = '#5A5E66';
+const ORANGE = '#FF5C1F';
+const INK = '#0A0B0E';
 
 function SortableRow({
   choice,
@@ -47,6 +53,8 @@ function SortableRow({
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 10 : undefined,
+    backgroundColor: isDragging ? ORANGE : undefined,
+    color: isDragging ? INK : undefined,
   };
 
   const num = String(index + 1).padStart(2, '0');
@@ -55,17 +63,15 @@ function SortableRow({
     <div
       ref={setNodeRef}
       style={style}
-      className={cn(
-        'group flex items-center gap-3 border-b border-[#0A0A0A]/10 py-2.5 transition-colors',
-        isDragging && 'bg-[#0A0A0A] text-[#F2EEE5]'
-      )}
+      className="group flex items-center gap-3 border-b py-2 transition-colors"
+      // border color set via style for the rgba
     >
-      {/* Drag handle — just the index, becomes a cursor on hover */}
       <button
         type="button"
         {...attributes}
         {...listeners}
-        className="cursor-grab font-mono text-xs text-[#0A0A0A]/40 tabular-nums active:cursor-grabbing"
+        className="cursor-grab font-mono text-xs tabular-nums active:cursor-grabbing"
+        style={{ color: isDragging ? INK : MUTED }}
         aria-label="Drag to reorder"
       >
         {num}
@@ -89,13 +95,17 @@ function SortableRow({
             onUpdate({ ...choice, label: draft.trim() || choice.label });
             setEditing(false);
           }}
-          className="h-7 flex-1 border-none bg-transparent p-0 font-mono text-sm shadow-none focus-visible:ring-0"
+          className="h-6 flex-1 border-none bg-transparent p-0 font-mono text-sm shadow-none focus-visible:ring-0"
+          style={{ color: isDragging ? INK : BONE }}
         />
       ) : (
         <button
           type="button"
           onClick={() => { setDraft(choice.label); setEditing(true); }}
-          className="flex-1 truncate text-left font-mono text-sm text-[#0A0A0A] hover:text-[#E63329]"
+          className="flex-1 truncate text-left font-mono text-sm transition-colors"
+          style={{ color: isDragging ? INK : BONE }}
+          onMouseEnter={(e) => { if (!isDragging) e.currentTarget.style.color = ORANGE; }}
+          onMouseLeave={(e) => { if (!isDragging) e.currentTarget.style.color = BONE; }}
         >
           {choice.label || `Choice ${index + 1}`}
         </button>
@@ -104,16 +114,19 @@ function SortableRow({
       <button
         type="button"
         onClick={onRemove}
-        className="text-[#0A0A0A]/30 opacity-0 transition-opacity hover:text-[#E63329] group-hover:opacity-100"
+        className="opacity-0 transition-opacity group-hover:opacity-100"
+        style={{ color: MUTED }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = ORANGE; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = MUTED; }}
         aria-label="Remove"
       >
-        <X className="h-3.5 w-3.5" />
+        <X className="h-3 w-3" />
       </button>
     </div>
   );
 }
 
-export default function ChoicesList({ choices, onChange }: Props) {
+export default function ChoicesList({ choices, onChange, removedCount }: Props) {
   const [newLabel, setNewLabel] = useState('');
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -147,42 +160,51 @@ export default function ChoicesList({ choices, onChange }: Props) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="mb-4 flex items-baseline justify-between border-b border-[#0A0A0A] pb-2">
-        <h2 className="font-mono text-xs uppercase tracking-[0.2em] text-[#0A0A0A]">
-          Choices
-        </h2>
-        <span className="font-mono text-xs tabular-nums text-[#0A0A0A]/50">
-          {String(choices.length).padStart(2, '0')}
-        </span>
+      {/* Header — terminal style with count + removed counter */}
+      <div className="mb-3 flex items-center justify-between border-b pb-2" style={{ borderColor: 'rgba(228, 224, 214, 0.1)' }}>
+        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em]" style={{ color: MUTED }}>
+          <span style={{ color: ORANGE }}>+</span>
+          OPTIONS.LIST
+        </div>
+        <div className="flex items-center gap-3 font-mono text-[10px] tabular-nums" style={{ color: MUTED }}>
+          <span>{String(choices.length).padStart(2, '0')} active</span>
+          {removedCount > 0 && (
+            <span style={{ color: ORANGE }}>{String(removedCount).padStart(2, '0')} removed</span>
+          )}
+        </div>
       </div>
 
-      {/* Add field — minimal, monospace */}
-      <div className="mb-4 flex items-center gap-2 border-b border-[#0A0A0A]/10 pb-2">
-        <span className="font-mono text-xs text-[#0A0A0A]/30">+</span>
+      {/* Add field */}
+      <div className="mb-3 flex items-center gap-2 border-b pb-2" style={{ borderColor: 'rgba(228, 224, 214, 0.1)' }}>
+        <span className="font-mono text-xs" style={{ color: MUTED }}>›</span>
         <Input
           value={newLabel}
           onChange={(e) => setNewLabel(e.target.value)}
-          placeholder="Add a choice…"
+          placeholder="add option..."
           onKeyDown={(e) => {
             if (e.key === 'Enter') addChoice();
           }}
-          className="h-6 flex-1 border-none bg-transparent p-0 font-mono text-sm shadow-none placeholder:text-[#0A0A0A]/30 focus-visible:ring-0"
+          className="h-6 flex-1 border-none bg-transparent p-0 font-mono text-sm shadow-none focus-visible:ring-0"
+          style={{ color: BONE }}
         />
         {newLabel.trim() && (
           <button
             onClick={addChoice}
-            className="font-mono text-xs uppercase tracking-wider text-[#E63329] hover:underline"
+            className="font-mono text-xs uppercase tracking-wider hover:underline"
+            style={{ color: ORANGE }}
           >
-            Add
+            +add
           </button>
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      {/* List */}
+      <div className="flex-1 overflow-y-auto pr-1">
         {choices.length === 0 ? (
-          <p className="py-8 text-center font-mono text-xs text-[#0A0A0A]/40">
-            Empty. Add at least two.
-          </p>
+          <div className="py-8 text-center font-mono text-xs" style={{ color: MUTED }}>
+            <div>{'// empty'}</div>
+            <div className="mt-1">{'// add at least 2 options'}</div>
+          </div>
         ) : (
           <DndContext
             sensors={sensors}
