@@ -232,40 +232,44 @@ export default function Home() {
         }}
       />
 
-      {/* Top bar — thin, terminal-style */}
-      <header className="relative flex items-center justify-between border-b px-4 py-3 sm:px-6" style={{ borderColor: 'rgba(228, 224, 214, 0.1)' }}>
+      {/* Top bar — thin, terminal-style, high contrast */}
+      <header className="relative flex items-center justify-between border-b px-4 py-3 sm:px-6" style={{ borderColor: 'rgba(228, 224, 214, 0.2)' }}>
         <div className="flex items-center gap-3">
-          <span className="font-sans text-sm font-extrabold tracking-tight">DECISION.WHEEL</span>
-          <span className="hidden font-mono text-[10px] uppercase tracking-[0.2em] sm:inline" style={{ color: MUTED }}>
+          <span className="font-sans text-sm font-extrabold tracking-tight" style={{ color: BONE }}>DECISION.WHEEL</span>
+          <span className="hidden font-mono text-xs font-semibold uppercase tracking-[0.2em] sm:inline" style={{ color: '#9CA0A8' }}>
             v2.0
           </span>
         </div>
         <div className="flex items-center gap-4">
-          {/* Status indicator */}
-          <div className="hidden items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] sm:flex" style={{ color: MUTED }}>
+          {/* Status indicator — bright */}
+          <div className="hidden items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.2em] sm:flex" style={{ color: BONE }}>
             <span
-              className="inline-block h-1.5 w-1.5 rounded-full"
+              className="inline-block h-2 w-2 rounded-full"
               style={{
-                backgroundColor: isSpinning ? ORANGE : canSpin ? ORANGE : MUTED,
+                backgroundColor: isSpinning ? ORANGE : canSpin ? ORANGE : '#7A7E86',
                 animation: isSpinning ? 'pulse 1s ease-in-out infinite' : undefined,
               }}
             />
-            <span style={{ color: isSpinning ? ORANGE : canSpin ? BONE : MUTED }}>
+            <span style={{ color: isSpinning ? ORANGE : canSpin ? BONE : '#9CA0A8' }}>
               {isSpinning ? 'SPINNING' : canSpin ? 'READY' : 'EMPTY'}
             </span>
           </div>
           <button
             onClick={() => setMuted((m) => !m)}
-            className="transition-colors hover:text-[#FF5C1F]"
-            style={{ color: MUTED }}
+            className="transition-colors"
+            style={{ color: BONE }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = ORANGE; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = BONE; }}
             aria-label={muted ? 'Unmute' : 'Mute'}
           >
-            {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </button>
           <button
             onClick={() => setShareOpen(true)}
-            className="font-mono text-[10px] uppercase tracking-[0.2em] transition-colors hover:text-[#FF5C1F]"
-            style={{ color: MUTED }}
+            className="font-mono text-xs font-semibold uppercase tracking-[0.2em] transition-colors"
+            style={{ color: BONE }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = ORANGE; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = BONE; }}
           >
             Share
           </button>
@@ -277,9 +281,9 @@ export default function Home() {
       <main className="relative flex flex-1 flex-col gap-4 p-4 sm:p-6 lg:grid lg:grid-cols-[1fr_380px] lg:gap-6">
         {/* LEFT — wheel + result panel + title */}
         <section className="flex flex-col items-center gap-4 lg:gap-6">
-          {/* Title — compact, top of wheel column */}
+          {/* Title — compact, top of wheel column, bright */}
           <div className="w-full max-w-2xl">
-            <div className="mb-1 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em]" style={{ color: MUTED }}>
+            <div className="mb-1 flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: BONE }}>
               <span style={{ color: ORANGE }}>+</span>
               TITLE
             </div>
@@ -288,7 +292,7 @@ export default function Home() {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Untitled"
               className="border-none border-b bg-transparent p-0 pb-1 font-sans text-lg font-bold tracking-tight shadow-none focus-visible:border-b focus-visible:ring-0 sm:text-xl"
-              style={{ borderColor: 'rgba(228, 224, 214, 0.2)', color: BONE }}
+              style={{ borderColor: 'rgba(228, 224, 214, 0.3)', color: BONE }}
             />
           </div>
 
@@ -331,53 +335,57 @@ export default function Home() {
         >
           <ChoicesList choices={choices} onChange={setChoices} removedCount={removedCount} />
 
-          {/* Footer actions — shuffle / clear */}
-          <div className="mt-3 flex gap-2 border-t pt-3" style={{ borderColor: 'rgba(228, 224, 214, 0.1)' }}>
+          {/* Footer actions — shuffle / clear, high contrast */}
+          <div className="mt-3 flex gap-2 border-t pt-3" style={{ borderColor: 'rgba(228, 224, 214, 0.2)' }}>
             <button
               onClick={handleShuffle}
               disabled={choices.length < 2}
-              className="flex flex-1 items-center justify-center gap-2 border py-2 font-mono text-[10px] uppercase tracking-[0.2em] transition-colors disabled:opacity-30"
+              className="flex flex-1 items-center justify-center gap-2 border py-2.5 font-mono text-xs font-semibold uppercase tracking-[0.15em] transition-all disabled:opacity-30"
               style={{
-                borderColor: 'rgba(228, 224, 214, 0.2)',
-                color: MUTED,
+                borderColor: BONE,
+                color: BONE,
+                backgroundColor: 'transparent',
               }}
-              onMouseEnter={(e) => { if (choices.length >= 2) { e.currentTarget.style.borderColor = ORANGE; e.currentTarget.style.color = ORANGE; } }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(228, 224, 214, 0.2)'; e.currentTarget.style.color = MUTED; }}
+              onMouseEnter={(e) => { if (choices.length >= 2) { e.currentTarget.style.backgroundColor = BONE; e.currentTarget.style.color = INK; } }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = BONE; }}
             >
-              <Shuffle className="h-3 w-3" />
+              <Shuffle className="h-3.5 w-3.5" />
               Shuffle
             </button>
             <button
               onClick={handleClear}
               disabled={choices.length === 0}
-              className="flex flex-1 items-center justify-center gap-2 border py-2 font-mono text-[10px] uppercase tracking-[0.2em] transition-colors disabled:opacity-30"
+              className="flex flex-1 items-center justify-center gap-2 border py-2.5 font-mono text-xs font-semibold uppercase tracking-[0.15em] transition-all disabled:opacity-30"
               style={{
-                borderColor: 'rgba(228, 224, 214, 0.2)',
-                color: MUTED,
+                borderColor: BONE,
+                color: BONE,
+                backgroundColor: 'transparent',
               }}
-              onMouseEnter={(e) => { if (choices.length > 0) { e.currentTarget.style.borderColor = ORANGE; e.currentTarget.style.color = ORANGE; } }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(228, 224, 214, 0.2)'; e.currentTarget.style.color = MUTED; }}
+              onMouseEnter={(e) => { if (choices.length > 0) { e.currentTarget.style.backgroundColor = BONE; e.currentTarget.style.color = INK; } }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = BONE; }}
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 className="h-3.5 w-3.5" />
               Clear
             </button>
           </div>
         </aside>
       </main>
 
-      {/* Footer — minimal */}
-      <footer className="relative border-t px-4 py-2 sm:px-6" style={{ borderColor: 'rgba(228, 224, 214, 0.1)' }}>
-        <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: MUTED }}>
+      {/* Footer — bright */}
+      <footer className="relative border-t px-4 py-2 sm:px-6" style={{ borderColor: 'rgba(228, 224, 214, 0.2)' }}>
+        <div className="flex items-center justify-between font-mono text-xs font-semibold uppercase tracking-[0.15em]" style={{ color: BONE }}>
           <span>
-            <kbd className="border px-1 py-0.5 text-[9px]" style={{ borderColor: 'rgba(228, 224, 214, 0.2)' }}>↵</kbd> spin ·{' '}
-            <kbd className="border px-1 py-0.5 text-[9px]" style={{ borderColor: 'rgba(228, 224, 214, 0.2)' }}>R</kbd> remove winner ·{' '}
+            <kbd className="px-1.5 py-0.5 text-[10px]" style={{ border: '1px solid rgba(228, 224, 214, 0.4)', color: BONE }}>↵</kbd> spin ·{' '}
+            <kbd className="px-1.5 py-0.5 text-[10px]" style={{ border: '1px solid rgba(228, 224, 214, 0.4)', color: BONE }}>R</kbd> remove winner ·{' '}
             click wheel to spin
           </span>
           <a
             href="https://github.com/Minher0/Decision-Wheel"
             target="_blank"
             rel="noreferrer"
-            className="hover:text-[#FF5C1F]"
+            style={{ color: BONE }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = ORANGE; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = BONE; }}
           >
             src ↗
           </a>

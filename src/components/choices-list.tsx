@@ -20,7 +20,6 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
 import { generateId, type Choice } from '@/lib/wheel-types';
 
 type Props = {
@@ -30,7 +29,6 @@ type Props = {
 };
 
 const BONE = '#E4E0D6';
-const MUTED = '#5A5E66';
 const ORANGE = '#FF5C1F';
 const INK = '#0A0B0E';
 
@@ -49,29 +47,25 @@ function SortableRow({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(choice.label);
 
-  const style = {
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 10 : undefined,
     backgroundColor: isDragging ? ORANGE : undefined,
     color: isDragging ? INK : undefined,
+    borderBottom: `1px solid rgba(228, 224, 214, 0.15)`,
   };
 
   const num = String(index + 1).padStart(2, '0');
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="group flex items-center gap-3 border-b py-2 transition-colors"
-      // border color set via style for the rgba
-    >
+    <div ref={setNodeRef} style={style} className="group flex items-center gap-3 py-2.5">
       <button
         type="button"
         {...attributes}
         {...listeners}
-        className="cursor-grab font-mono text-xs tabular-nums active:cursor-grabbing"
-        style={{ color: isDragging ? INK : MUTED }}
+        className="cursor-grab font-mono text-xs font-semibold tabular-nums active:cursor-grabbing"
+        style={{ color: isDragging ? INK : '#9CA0A8' }}
         aria-label="Drag to reorder"
       >
         {num}
@@ -114,13 +108,13 @@ function SortableRow({
       <button
         type="button"
         onClick={onRemove}
-        className="opacity-0 transition-opacity group-hover:opacity-100"
-        style={{ color: MUTED }}
+        className="transition-opacity group-hover:opacity-100"
+        style={{ color: '#9CA0A8', opacity: 0.6 }}
         onMouseEnter={(e) => { e.currentTarget.style.color = ORANGE; }}
-        onMouseLeave={(e) => { e.currentTarget.style.color = MUTED; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = '#9CA0A8'; }}
         aria-label="Remove"
       >
-        <X className="h-3 w-3" />
+        <X className="h-3.5 w-3.5" />
       </button>
     </div>
   );
@@ -160,13 +154,16 @@ export default function ChoicesList({ choices, onChange, removedCount }: Props) 
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header — terminal style with count + removed counter */}
-      <div className="mb-3 flex items-center justify-between border-b pb-2" style={{ borderColor: 'rgba(228, 224, 214, 0.1)' }}>
-        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em]" style={{ color: MUTED }}>
+      {/* Header — bright */}
+      <div
+        className="mb-3 flex items-center justify-between border-b pb-2"
+        style={{ borderColor: 'rgba(228, 224, 214, 0.2)' }}
+      >
+        <div className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: BONE }}>
           <span style={{ color: ORANGE }}>+</span>
           OPTIONS.LIST
         </div>
-        <div className="flex items-center gap-3 font-mono text-[10px] tabular-nums" style={{ color: MUTED }}>
+        <div className="flex items-center gap-3 font-mono text-xs font-semibold tabular-nums" style={{ color: BONE }}>
           <span>{String(choices.length).padStart(2, '0')} active</span>
           {removedCount > 0 && (
             <span style={{ color: ORANGE }}>{String(removedCount).padStart(2, '0')} removed</span>
@@ -174,9 +171,12 @@ export default function ChoicesList({ choices, onChange, removedCount }: Props) 
         </div>
       </div>
 
-      {/* Add field */}
-      <div className="mb-3 flex items-center gap-2 border-b pb-2" style={{ borderColor: 'rgba(228, 224, 214, 0.1)' }}>
-        <span className="font-mono text-xs" style={{ color: MUTED }}>›</span>
+      {/* Add field — bright text */}
+      <div
+        className="mb-3 flex items-center gap-2 border-b pb-2"
+        style={{ borderColor: 'rgba(228, 224, 214, 0.2)' }}
+      >
+        <span className="font-mono text-xs" style={{ color: ORANGE }}>›</span>
         <Input
           value={newLabel}
           onChange={(e) => setNewLabel(e.target.value)}
@@ -190,8 +190,10 @@ export default function ChoicesList({ choices, onChange, removedCount }: Props) 
         {newLabel.trim() && (
           <button
             onClick={addChoice}
-            className="font-mono text-xs uppercase tracking-wider hover:underline"
+            className="font-mono text-xs font-semibold uppercase tracking-wider"
             style={{ color: ORANGE }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#FF7A3D'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = ORANGE; }}
           >
             +add
           </button>
@@ -201,7 +203,7 @@ export default function ChoicesList({ choices, onChange, removedCount }: Props) 
       {/* List */}
       <div className="flex-1 overflow-y-auto pr-1">
         {choices.length === 0 ? (
-          <div className="py-8 text-center font-mono text-xs" style={{ color: MUTED }}>
+          <div className="py-8 text-center font-mono text-xs" style={{ color: BONE }}>
             <div>{'// empty'}</div>
             <div className="mt-1">{'// add at least 2 options'}</div>
           </div>
