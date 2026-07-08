@@ -1,120 +1,111 @@
 'use client';
 
 import { useEffect } from 'react';
-import confetti from 'canvas-confetti';
-import { Trophy, RotateCcw, Share2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+import { RotateCcw, Share2, X } from 'lucide-react';
 import type { Choice } from '@/lib/wheel-types';
 
 type Props = {
   open: boolean;
   winner: Choice | null;
+  winnerIndex: number | null;
   onClose: () => void;
   onSpinAgain: () => void;
   onShare: () => void;
 };
 
-export default function ResultModal({ open, winner, onClose, onSpinAgain, onShare }: Props) {
+export default function ResultModal({
+  open,
+  winner,
+  winnerIndex,
+  onClose,
+  onSpinAgain,
+  onShare,
+}: Props) {
+  // Lock body scroll while open
   useEffect(() => {
-    if (open && winner) {
-      // Celebratory confetti burst
-      const colors = [winner.color, '#FFD700', '#FF006E', '#8338EC', '#06FFA5'];
-      const end = Date.now() + 1800;
-
-      const frame = () => {
-        confetti({
-          particleCount: 4,
-          angle: 60,
-          spread: 70,
-          origin: { x: 0, y: 0.7 },
-          colors,
-          scalar: 1.1,
-        });
-        confetti({
-          particleCount: 4,
-          angle: 120,
-          spread: 70,
-          origin: { x: 1, y: 0.7 },
-          colors,
-          scalar: 1.1,
-        });
-        if (Date.now() < end) requestAnimationFrame(frame);
-      };
-      frame();
-
-      // Big initial burst from center
-      confetti({
-        particleCount: 120,
-        spread: 90,
-        origin: { x: 0.5, y: 0.6 },
-        colors,
-        scalar: 1.3,
-        ticks: 250,
-      });
+    if (open) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = prev; };
     }
-  }, [open, winner]);
+  }, [open]);
+
+  // Keyboard: Esc to close, S to share, Space to spin again
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onSpinAgain(); }
+      if (e.key.toLowerCase() === 's') onShare();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose, onSpinAgain, onShare]);
+
+  if (!open) return null;
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="border-0 bg-gradient-to-br from-[#1a0b2e] via-[#2d1b4e] to-[#1a0b2e] text-white shadow-2xl">
-        <div
-          className="pointer-events-none absolute inset-0 -z-10 opacity-60 blur-2xl"
-          style={{
-            background: winner
-              ? `radial-gradient(circle at 50% 40%, ${winner.color}55, transparent 60%)`
-              : 'transparent',
-          }}
-        />
-        <DialogHeader className="items-center text-center">
-          <div
-            className="mb-2 flex h-16 w-16 items-center justify-center rounded-full ring-4 ring-white/20"
-            style={{
-              backgroundColor: winner?.color,
-              boxShadow: `0 0 40px ${winner?.color}cc`,
-            }}
-          >
-            <Trophy className="h-8 w-8 text-white" />
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#F2EEE5]">
+      {/* Close — top right, minimal */}
+      <button
+        onClick={onClose}
+        className="absolute right-6 top-6 font-mono text-xs uppercase tracking-[0.2em] text-[#0A0A0A]/50 hover:text-[#E63329]"
+        aria-label="Close"
+      >
+        <X className="h-4 w-4" />
+      </button>
+
+      {/* Top-left meta */}
+      <div className="absolute left-6 top-6 font-mono text-xs uppercase tracking-[0.2em] text-[#0A0A0A]/50">
+        Result
+      </div>
+
+      {/* Main content — centered, massive */}
+      <div className="flex flex-1 flex-col items-center justify-center px-6">
+        {/* Index marker — like a chapter number */}
+        {winnerIndex != null && (
+          <div className="mb-8 font-mono text-sm tabular-nums text-[#0A0A0A]/40">
+            № {String(winnerIndex + 1).padStart(2, '0')}
           </div>
-          <DialogTitle className="bg-gradient-to-r from-amber-200 via-fuchsia-300 to-amber-200 bg-clip-text text-2xl font-bold text-transparent">
-            Winner!
-          </DialogTitle>
-          <DialogDescription className="sr-only">
-            The wheel has selected a winner.
-          </DialogDescription>
-        </DialogHeader>
+        )}
 
-        <div className="py-4 text-center">
-          <p className="text-sm uppercase tracking-widest text-white/50">Your decision is</p>
-          <p className="mt-2 break-words text-4xl font-black tracking-tight text-white">
-            {winner?.label}
-          </p>
-        </div>
+        {/* The winner — display weight, tight tracking, single line if possible */}
+        <h2
+          className="break-words text-center font-sans text-6xl font-extrabold leading-[0.95] tracking-tighter text-[#0A0A0A] sm:text-7xl md:text-8xl lg:text-9xl"
+          style={{
+            // Red underline — the only accent, the only color on the screen
+            borderBottom: '6px solid #E63329',
+            paddingBottom: '0.1em',
+          }}
+        >
+          {winner?.label || '—'}
+        </h2>
 
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Button
-            onClick={onSpinAgain}
-            className="flex-1 bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black hover:from-fuchsia-400 hover:to-amber-300"
-          >
-            <RotateCcw className="mr-2 h-4 w-4" />
-            Spin Again
-          </Button>
-          <Button
-            onClick={onShare}
-            variant="outline"
-            className="flex-1 border-white/20 bg-white/5 text-white hover:bg-white/10"
-          >
-            <Share2 className="mr-2 h-4 w-4" />
-            Share Wheel
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+        <p className="mt-10 font-mono text-xs uppercase tracking-[0.25em] text-[#0A0A0A]/50">
+          The wheel has decided
+        </p>
+      </div>
+
+      {/* Bottom actions — text links, not buttons */}
+      <div className="flex items-center justify-center gap-8 border-t border-[#0A0A0A]/10 py-6">
+        <button
+          onClick={onSpinAgain}
+          className="group flex items-center gap-2 font-mono text-xs uppercase tracking-[0.2em] text-[#0A0A0A] hover:text-[#E63329]"
+        >
+          <RotateCcw className="h-3.5 w-3.5 transition-transform group-hover:-rotate-180" />
+          Spin again
+          <kbd className="ml-1 hidden border border-[#0A0A0A]/20 px-1.5 py-0.5 text-[10px] sm:inline">↵</kbd>
+        </button>
+        <span className="text-[#0A0A0A]/20">·</span>
+        <button
+          onClick={onShare}
+          className="group flex items-center gap-2 font-mono text-xs uppercase tracking-[0.2em] text-[#0A0A0A] hover:text-[#E63329]"
+        >
+          <Share2 className="h-3.5 w-3.5" />
+          Share
+          <kbd className="ml-1 hidden border border-[#0A0A0A]/20 px-1.5 py-0.5 text-[10px] sm:inline">S</kbd>
+        </button>
+      </div>
+    </div>
   );
 }

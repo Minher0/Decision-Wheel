@@ -6,29 +6,30 @@ import { Toaster } from "@/components/ui/toaster";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800", "900"],
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
   title: "Decision Wheel — Spin to Decide",
   description:
-    "An immersive decision wheel. Add your choices, spin the wheel, and let fate decide. Share wheels with anyone via a link.",
-  keywords: ["decision wheel", "wheel of fortune", "spinner", "random picker", "decision maker"],
+    "A wheel for indecisive moments. Add your choices, spin, share the link.",
+  keywords: ["decision wheel", "wheel of fortune", "spinner", "random picker"],
   authors: [{ name: "Minher0" }],
   openGraph: {
-    title: "Decision Wheel — Spin to Decide",
-    description:
-      "An immersive decision wheel. Add your choices, spin, and share.",
+    title: "Decision Wheel",
+    description: "A wheel for indecisive moments.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "Decision Wheel",
-    description: "Spin to decide. Share your wheels.",
+    description: "A wheel for indecisive moments.",
   },
 };
 
@@ -40,7 +41,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#0a0418] text-white`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#F2EEE5] text-[#0A0A0A]`}
       >
         {children}
         <Toaster />

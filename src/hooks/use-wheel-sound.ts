@@ -58,22 +58,34 @@ export function useWheelSound() {
     const ctx = ensureCtx();
     if (!ctx || !masterGainRef.current) return;
     const now = ctx.currentTime;
-    // Major chord arpeggio: C5 E5 G5 C6
-    const notes = [523.25, 659.25, 783.99, 1046.50];
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      const start = now + i * 0.08;
-      gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(0.3, start + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.8);
-      osc.connect(gain);
-      gain.connect(masterGainRef.current!);
-      osc.start(start);
-      osc.stop(start + 0.85);
-    });
+    // A single low resolved note — like a tuning fork settling.
+    // No arpeggio, no celebration melody. Just a tone that says "done".
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(220, now);
+    osc.frequency.exponentialRampToValueAtTime(110, now + 1.2);
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.35, now + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
+    osc.connect(gain);
+    gain.connect(masterGainRef.current);
+    osc.start(now);
+    osc.stop(now + 1.5);
+
+    // Add a faint upper harmonic for body
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'triangle';
+    osc2.frequency.setValueAtTime(440, now);
+    osc2.frequency.exponentialRampToValueAtTime(220, now + 1.2);
+    gain2.gain.setValueAtTime(0, now);
+    gain2.gain.linearRampToValueAtTime(0.08, now + 0.03);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+    osc2.connect(gain2);
+    gain2.connect(masterGainRef.current);
+    osc2.start(now);
+    osc2.stop(now + 1.3);
   }, [ensureCtx]);
 
   const whoosh = useCallback(() => {
